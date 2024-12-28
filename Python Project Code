@@ -1,0 +1,267 @@
+	
+# Importing libraries
+import pandas as pd
+import plotly.express as px
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+import statsmodels.api as sm
+import statsmodels.formula.api as smf
+from sklearn.linear_model import LinearRegression
+
+# Load .csv File
+df= pd.read_csv('US_Stock_Data.csv')
+# view data types and basic structure
+df.info()
+
+list (df.columns.values)
+
+# Check if any null values
+print(df.isnull().sum())
+
+# Drop rows with any null
+df = df.dropna()
+
+# Check if any null values
+print(df.isnull().sum())
+
+# view data types and basic structure
+df.info()
+
+df.head()
+
+print(df.head().to_string(header=False, index=False))
+
+df.tail()
+
+print(df.tail().to_string(header=False, index=False))
+
+
+# Summary statistics
+df.describe().round(0)
+
+print(df.describe().round(0).to_string(header=False, index=False))
+
+#format inconcistent date values
+df['Date'] = pd.to_datetime(df['Date'], format='mixed', dayfirst=True, errors='coerce')
+
+
+#Check for any null dates.
+print(df[df['Date'].isnull()])
+
+df['S&P_500_Price'] = df['S&P_500_Price'].replace({',': ''}, regex=True)
+df['Bitcoin_Price'] = df['Bitcoin_Price'].replace({',': ''}, regex=True)
+
+df['S&P_500_Price'] = pd.to_numeric(df['S&P_500_Price'], errors='coerce')
+df['Bitcoin_Price'] = pd.to_numeric(df['Bitcoin_Price'], errors='coerce')
+
+
+#Set Date Index
+df.set_index('Date', inplace=True)
+
+# Plot price trends for 
+df[['S&P_500_Price', 'Crude_oil_Price', 'Bitcoin_Price']].plot(figsize=(10, 6))
+plt.title('Price Trends for S&P 500, Crude Oil, and Bitcoin')
+plt.xlabel('Date')
+plt.ylabel('Price')
+plt.legend(loc='best')
+plt.show()
+
+# columns to visualize
+columns = ['Bitcoin_Price']
+
+# visualize
+for col in columns:
+    plt.figure(figsize=(24, 10))
+    plt.plot(df.index, df[col], label=col, color='Black', linewidth=0.5)
+    plt.title(f'{col} Over Time')
+    plt.xlabel('Year')
+    plt.ylabel('Price ($)')
+    plt.legend()
+    plt.grid()
+    plt.show()
+
+
+# columns to visualize
+columns = ['Crude_oil_Price']
+
+# visualize
+for col in columns:
+    plt.figure(figsize=(24, 10))
+    plt.plot(df.index, df[col], label=col, color='Black', linewidth=0.5)
+    plt.title(f'{col} Over Time')
+    plt.xlabel('Year')
+    plt.ylabel('Price ($)')
+    plt.legend()
+    plt.grid()
+    plt.show()
+
+# columns to visualize
+columns = ['S&P_500_Price']
+
+# visualize
+for col in columns:
+    plt.figure(figsize=(24, 10))
+    plt.plot(df.index, df[col], label=col, color='Black', linewidth=0.5)
+    plt.title(f'{col} Over Time')
+    plt.xlabel('Year')
+    plt.ylabel('Price ($)')
+    plt.legend()
+    plt.grid()
+    plt.show()
+
+# Calculate the 10-year moving average for S&P 500 Price
+df['S&P_500_Price_MovingAvg'] = df['S&P_500_Price'].rolling(window=20, min_periods=1, center=False).mean()
+
+# Plot S&P 500 Price and its moving average
+plt.figure(figsize=(12, 6))
+plt.plot(df.index, df['S&P_500_Price'], label='Original S&P 500 Price', alpha=0.6)
+plt.plot(df.index, df['S&P_500_Price_MovingAvg'], label='Moving Average for each 20 data rows', color='red', linewidth=2)
+plt.xlabel('Year')
+plt.ylabel('Price ($)')
+plt.title('Each 20 rows Moving Average of S&P 500 Price')
+plt.legend()
+plt.grid(True)
+plt.show()
+
+
+# Calculate the 10-year moving average for Crude Oil Price
+df['Crude_oil_Price_MovingAvg'] = df['Crude_oil_Price'].rolling(window=20, min_periods=1, center=False).mean()
+
+# Plot Crude Oil Price and its moving average
+plt.figure(figsize=(12, 6))
+plt.plot(df.index, df['Crude_oil_Price'], label='Original Crude Oil Price', alpha=0.6)
+plt.plot(df.index, df['Crude_oil_Price_MovingAvg'], label='Moving Average of 20 rows', color='red', linewidth=2)
+plt.xlabel('Year')
+plt.ylabel('Price ($)')
+plt.title('Each 20 rows Moving Average of Crude Oil Price')
+plt.legend()
+plt.grid(True)
+plt.show()
+
+# Calculate the 10-year moving average for Bitcoin Price
+df['Bitcoin_Price_MovingAvg'] = df['Bitcoin_Price'].rolling(window=20, min_periods=1, center=False).mean()
+
+# Plot Bitcoin Price and its moving average
+plt.figure(figsize=(12, 6))
+plt.plot(df.index, df['Bitcoin_Price'], label='Original Bitcoin Price', alpha=0.6)
+plt.plot(df.index, df['Bitcoin_Price_MovingAvg'], label='20 rows Moving Average', color='red', linewidth=2)
+plt.xlabel('Year')
+plt.ylabel('Price ($)')
+plt.title('20 rows Moving Average of BTC')
+plt.legend()
+plt.grid(True)
+plt.show()
+
+# 20 Rows rolling means
+SP_MA = df['S&P_500_Price'].rolling(window=20).mean()
+Crude_oil_MA = df['Crude_oil_Price'].rolling(window=20).mean()
+Bitcoin_MA = df['Bitcoin_Price'].rolling(window=20).mean()
+
+
+df_rm = pd.concat([SP_MA, Crude_oil_MA, Bitcoin_MA], axis=1)
+
+
+df_rm.columns = ['S&P 500', 'Crude Oil', 'Bitcoin']
+
+
+df_rm.plot(figsize=(20, 10), linewidth=5, fontsize=20)
+
+
+plt.xlabel('Year', fontsize=20)
+plt.ylabel('$', fontsize=20)
+plt.title('20 Rows Moving Averages for S&P 500, Crude Oil, and BTC', fontsize=20)
+plt.legend(loc='best', fontsize=15)
+plt.grid(True)
+plt.show()
+
+
+from statsmodels.tsa.seasonal import seasonal_decompose
+
+
+#Time series Decomposition and plot
+decomposed = seasonal_decompose(df['S&P_500_Price'], model='multiplicative', period=20)
+
+decomposed.plot()
+plt.show()
+
+#Time series Decomposition and plot
+decomposed = seasonal_decompose(df['Crude_oil_Price'], model='multiplicative', period=20)
+
+decomposed.plot()
+plt.show()
+
+
+#Time series Decomposition and plot
+decomposed = seasonal_decompose(df['Bitcoin_Price'], model='multiplicative', period=20)
+
+decomposed.plot()
+plt.show()
+
+
+# Correlation matrix
+correlation_matrix = df[['S&P_500_Price', 'Crude_oil_Price']].corr()
+print(correlation_matrix)
+
+sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', fmt=".2f")
+plt.title('Correlation Matrix')
+plt.show()
+
+# Correlation matrix
+correlation_matrix = df[['S&P_500_Price', 'Bitcoin_Price']].corr()
+print(correlation_matrix)
+
+sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', fmt=".2f")
+plt.title('Correlation Matrix')
+plt.show()
+
+# Correlation matrix
+correlation_matrix = df[['Crude_oil_Price', 'Bitcoin_Price']].corr()
+print(correlation_matrix)
+
+sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', fmt=".2f")
+plt.title('Correlation Matrix')
+plt.show()
+
+# Correlation matrix
+correlation_matrix = df[['S&P_500_Price', 'Crude_oil_Price', 'Bitcoin_Price']].corr()
+print(correlation_matrix)
+
+sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', fmt=".2f")
+plt.title('Correlation Matrix')
+plt.show()
+
+from statsmodels.tsa.arima.model import ARIMA
+
+
+# ARIMA BTC
+arima_model = ARIMA(df['Bitcoin_Price'], order=(1, 1, 1))
+arima_result = arima_model.fit()
+
+# Print ARIMA model summary and Forecast
+print(arima_result.summary())
+
+
+forecast = arima_result.forecast(steps=30)
+plt.plot(df['Bitcoin_Price'], label='Historical')
+plt.plot(forecast, label='Forecast', linestyle='--')
+plt.legend()
+plt.title('Bitcoin Price Forecast')
+plt.show()
+
+# Define Crude Oil
+arima_model = ARIMA(df['Crude_oil_Price'], order=(1, 1, 1))
+arima_result = arima_model.fit()
+
+# Print ARIMA model summary and Forecast
+print(arima_result.summary())
+
+# Forecast future values
+forecast = arima_result.forecast(steps=30)
+plt.plot(df['Crude_oil_Price'], label='Historical')
+plt.plot(forecast, label='Forecast', linestyle='--')
+plt.legend()
+plt.title('Crude Oil Price Forecast')
+plt.show()
+
+
